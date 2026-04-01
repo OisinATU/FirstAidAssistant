@@ -21,7 +21,7 @@ bool lastBtn2 = HIGH;
 #define BTN1_PIN 13
 #define BTN2_PIN 14
 
-int screenIndex = 0;
+int screenIndex = 3;
 
 struct Screen {
   const char* title;
@@ -112,52 +112,60 @@ void loop() {
     bool btn2 = digitalRead(BTN2_PIN) == LOW;
 
 
-    switch(screenIndex){
-      case 0: 
-      if(btn1) screenIndex = 1;
-      if(btn2) screenIndex = 9;
-      break;
+switch(screenIndex) {
 
-      case 1:
-      if(btn1) screenIndex = 2;
-      if(btn2) screenIndex = 3;
-      break;
+  case 0:
+    if(btn1) screenIndex = 1;
+    if(btn2) screenIndex = 10;
+  break;
 
-      case 2:
-      screenIndex = 3;
-      break;
-
-      case 3:
-      if(btn1) screenIndex = 4;
-      if(btn2) screenIndex = 5;
-      break;
-
-      case 4:
-      screenIndex = 7;
-      break;
-
-      case 5:
-      screenIndex = 6;
-      break;
-
-      case 6;
+  case 1:
+    if(btn1) screenIndex = 2;
+    if(btn2) screenIndex = 3;
+  break;
 
 
-      case 7:
+  case 2:
+    if(btn1) screenIndex = 8;
+    if(btn2) screenIndex = 3;
+  break;
 
+  case 3:
+    if(btn1) screenIndex = 4;
+  break;
 
-      case 8:
+  case 4:
+    if(btn1) screenIndex = 5;
+    if(btn2) screenIndex = 6;
+  break;
 
+  case 5:
+    if(btn1) screenIndex = 9;
+  break;
 
+  case 6:
+    if(btn1) screenIndex = 7;
+  break;
 
-      case 9: 
+  case 7:
+    if(btn1) screenIndex = 6;
+    if(btn2) screenIndex = 6;
+  break;
 
+  case 8:
+    if(btn1) screenIndex = 9;
+  break;
 
+  case 9:
+    if(btn1) screenIndex = 6;
+    if(btn2) screenIndex = 10;
+  break;
 
+  case 10:
+    if(btn1) screenIndex = 0;
+  break;
+}
 
-
-
-    }
 
 
     drawScreen(screenIndex);
