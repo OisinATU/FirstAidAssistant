@@ -67,14 +67,14 @@ void drawScreen(int i) {
   tft.fillScreen(MED_WHITE);
   tft.setTextWrap(true);
 
-  // header
+  // Header
   tft.fillRect(0, 0, 160, 30, PURE_GREEN);
   tft.setTextSize(2);
   tft.setTextColor(MED_WHITE);
   tft.setCursor(10, 8);
   tft.print(screens[i].title);
 
-  // body
+  // Body
   tft.setTextSize(1);
   tft.setTextColor(MED_BLACK);
   tft.setCursor(10, 45);
@@ -82,12 +82,29 @@ void drawScreen(int i) {
   tft.setCursor(10, 58);
   tft.print(screens[i].line2);
 
-  // options
+  // Special: Call Help screen (index 3)
+  if (i == 3) {
+    tft.setCursor(10, 72);
+    tft.print("Location:");
+    tft.setCursor(10, 84);
+    tft.print("53.2707, -9.0568");  // fake location
+  }
+
+  // Options
   tft.setTextColor(MED_GREEN);
-  tft.setCursor(20, 90);
-  tft.print(screens[i].opt1);
-  tft.setCursor(20, 110);
-  tft.print(screens[i].opt2);
+
+  // Move options slightly lower if Call Help screen
+  if (i == 3) {
+    tft.setCursor(20, 100);
+    tft.print(screens[i].opt1);
+    tft.setCursor(20, 115);
+    tft.print(screens[i].opt2);
+  } else {
+    tft.setCursor(20, 90);
+    tft.print(screens[i].opt1);
+    tft.setCursor(20, 110);
+    tft.print(screens[i].opt2);
+  }
 }
 
 
@@ -166,15 +183,5 @@ switch(screenIndex) {
   break;
 }
 
-
-
-    drawScreen(screenIndex);
-
-    if(digitalRead(BTN2_PIN) == LOW){
-    screenIndex--;
-    if (screenIndex < 0) screenIndex = SCREEN_COUNT - 1;
-    drawScreen(screenIndex);
-    delay(250);
-  }
 
 }
