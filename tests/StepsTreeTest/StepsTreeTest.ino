@@ -18,10 +18,18 @@ bool lastBtn1 = HIGH;
 bool lastBtn2 = HIGH;
 
 
+// Beeper
+#define SPEAKER_PIN 25
+
+const int CPR_BPM = 110;
+const int CPR_INTERVAL = 60000 / CPR_BPM;   // about 545 ms
+unsigned long lastBeatTime = 0;
+
+
 #define BTN1_PIN 13
 #define BTN2_PIN 14
 
-int screenIndex = 3;
+int screenIndex = 6;
 
 struct Screen {
   const char* title;
@@ -90,11 +98,22 @@ void drawScreen(int i) {
     tft.print("53.2707, -9.0568");  // fake location
   }
 
+    // Special: Monitor screen (index 9)
+  if (i == 9) {
+    tft.setCursor(100, 74);
+    tft.setTextColor(MED_RED);
+    tft.print("Pulse:   ");
+    tft.setCursor(100, 84);
+    tft.setTextColor(MED_BLACK);
+    tft.print(78);
+    tft.print(" bpm");
+  }
+
   // Options
   tft.setTextColor(MED_GREEN);
 
   // Move options slightly lower if Call Help screen
-  if (i == 3) {
+  if (i == 3 || i ==9) {
     tft.setCursor(20, 100);
     tft.print(screens[i].opt1);
     tft.setCursor(20, 115);
@@ -108,6 +127,19 @@ void drawScreen(int i) {
 }
 
 
+void runCprMetronome() {
+  unsigned long now = millis();
+
+  if (now - lastBeatTime >= CPR_INTERVAL) {
+    lastBeatTime = now;
+
+    ledcWriteTone(SPEAKER_PIN, 2000);
+    ledcWrite(SPEAKER_PIN, 160);
+    delay(50);
+    ledcWrite(SPEAKER_PIN, 0);
+  }
+}
+
 /*********** SETUP ***********/
 void setup() {
 
@@ -117,6 +149,9 @@ void setup() {
 
   pinMode(BTN1_PIN, INPUT_PULLUP); // Connected to internal pullup to give a definite high value
   pinMode(BTN2_PIN, INPUT_PULLUP);
+
+  ledcAttach(SPEAKER_PIN, 1000, 8);
+  ledcWrite(SPEAKER_PIN, 0);
 
   drawScreen(screenIndex);
 }
@@ -182,6 +217,13 @@ switch(screenIndex) {
     if(btn1) screenIndex = 0;
   break;
 }
+
+  // behaviour based on screen
+  if (screenIndex == 6) {
+    runCprMetronome();
+  } else {
+    ledcWrite(SPEAKER_PIN, 0);
+  }
 
 
 }
