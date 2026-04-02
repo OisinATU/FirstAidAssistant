@@ -29,7 +29,8 @@ unsigned long lastBeatTime = 0;
 #define BTN1_PIN 13
 #define BTN2_PIN 14
 
-int screenIndex = 6;
+int screenIndex = 0;
+int lastScreenIndex = -1;
 
 struct Screen {
   const char* title;
@@ -159,71 +160,85 @@ void setup() {
 /*********** LOOP ***********/
 void loop() {
 
-    // Syntax for cleaner code
-    bool btn1 = digitalRead(BTN1_PIN) == LOW;
-    bool btn2 = digitalRead(BTN2_PIN) == LOW;
+bool btn1Now = digitalRead(BTN1_PIN);
+bool btn2Now = digitalRead(BTN2_PIN);
+
+bool btn1Pressed = (lastBtn1 == HIGH && btn1Now == LOW);
+bool btn2Pressed = (lastBtn2 == HIGH && btn2Now == LOW);
 
 
 switch(screenIndex) {
 
   case 0:
-    if(btn1) screenIndex = 1;
-    if(btn2) screenIndex = 10;
+    if(btn1Pressed) screenIndex = 1;
+    if(btn2Pressed) screenIndex = 10;
   break;
 
   case 1:
-    if(btn1) screenIndex = 2;
-    if(btn2) screenIndex = 3;
+    if(btn1Pressed) screenIndex = 2;
+    if(btn2Pressed) screenIndex = 3;
   break;
 
 
   case 2:
-    if(btn1) screenIndex = 8;
-    if(btn2) screenIndex = 3;
+    if(btn1Pressed) screenIndex = 8;
+    if(btn2Pressed) screenIndex = 3;
   break;
 
   case 3:
-    if(btn1) screenIndex = 4;
+    if(btn1Pressed) screenIndex = 4;
   break;
 
   case 4:
-    if(btn1) screenIndex = 5;
-    if(btn2) screenIndex = 6;
+    if(btn1Pressed) screenIndex = 5;
+    if(btn2Pressed) screenIndex = 6;
   break;
 
   case 5:
-    if(btn1) screenIndex = 9;
+    if(btn1Pressed) screenIndex = 9;
   break;
 
   case 6:
-    if(btn1) screenIndex = 7;
+    if(btn1Pressed) screenIndex = 7;
   break;
 
   case 7:
-    if(btn1) screenIndex = 6;
-    if(btn2) screenIndex = 6;
+    if(btn1Pressed) screenIndex = 6;
+    if(btn2Pressed) screenIndex = 6;
   break;
 
   case 8:
-    if(btn1) screenIndex = 9;
+    if(btn1Pressed) screenIndex = 9;
   break;
 
   case 9:
-    if(btn1) screenIndex = 6;
-    if(btn2) screenIndex = 10;
+    if(btn1Pressed) screenIndex = 6;
+    if(btn2Pressed) screenIndex = 10;
   break;
 
   case 10:
-    if(btn1) screenIndex = 0;
+    if(btn1Pressed) screenIndex = 0;
   break;
 }
 
+
+// draw screen
+if(screenIndex != lastScreenIndex){
+  drawScreen(screenIndex);
+  lastScreenIndex = screenIndex;
+}
+
   // behaviour based on screen
-  if (screenIndex == 6) {
-    runCprMetronome();
-  } else {
-    ledcWrite(SPEAKER_PIN, 0);
-  }
+if (screenIndex == 6) {
+  runCprMetronome();
+} else {
+  ledcWrite(SPEAKER_PIN, 0);
+  ledcWriteTone(SPEAKER_PIN, 0);
+  lastBeatTime = millis();
+}
+
+lastBtn1 = btn1Now;
+lastBtn2 = btn2Now;
 
 
 }
