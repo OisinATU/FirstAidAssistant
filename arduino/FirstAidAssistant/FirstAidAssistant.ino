@@ -2,6 +2,9 @@
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7735.h>
+#include <WebServer.h>
+#include <ESPmDNS.h>
+#include "homepage.h"
 
 #include <TinyGPSPlus.h>
 #include <HardwareSerial.h>
@@ -12,7 +15,7 @@
 /*********** BLYNK ***********/
 #define BLYNK_TEMPLATE_ID           "TMPL4R8ux29kx"
 #define BLYNK_TEMPLATE_NAME         "Quickstart Template"
-#define BLYNK_AUTH_TOKEN            "rjnqEU1McO9eAcAB1xfur04DDrVEu7nK"
+#define BLYNK_AUTH_TOKEN "rjnqEU1McO9eAcAB1xfur04DDrVEu7nK"
 #define BLYNK_PRINT Serial
 
 #include <WiFi.h>
@@ -60,6 +63,51 @@ const unsigned long TFT_INTERVAL_MS = 500;
 
 /*********** Status ***********/
 String statusText = "Booting";
+
+// Decision tree state
+int currentStep = 1;
+String currentStepName = "Safety Check";
+
+/****** Webserver ******/
+WebServer server(80);
+
+void handleRoot() {
+  server.send(200, "text/html", homePage);
+}
+
+void handleSensors() {
+  int outPulse = (validHeartRate && heartRate > 0) ? heartRate : -1;
+  int outSpO2  = (validSPO2 && spo2 > 0) ? spo2 : -1;
+
+  String json = "{";
+  json += "\"pulse\": " + String(outPulse) + ",";
+  json += "\"spo2\": " + String(outSpO2) + ",";
+  json += "\"lat\": " + String(lat, 6) + ",";
+  json += "\"lon\": " + String(lon, 6) + ",";
+  json += "\"step\": " + String(currentStep) + ",";
+  json += "\"stepName\": \"" + currentStepName + "\",";
+  json += "\"status\": \"" + statusText + "\"";
+  json += "}";
+
+  server.send(200, "application/json", json);
+}
+
+void handleNotFound() {
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server.uri();
+  message += "\nMethod: ";
+  message += (server.method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server.args();
+  message += "\n";
+
+  for (uint8_t i = 0; i < server.args(); i++) {
+    message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
+  }
+
+  server.send(404, "text/plain", message);
+}
 
 /*********** UI ***********/
 void drawUIFrame() {
@@ -145,9 +193,10 @@ void computeSpO2AndHR() {
   for (int i = 0; i < BUFFER_SIZE; i++) {
     while (particleSensor.available() == false) {
       particleSensor.check();
-      updateGPS();        // keep GPS alive
-      Blynk.run();        // keep Blynk connection alive during waits
+      updateGPS();
+      Blynk.run();
       timer.run();
+      server.handleClient();
     }
     redBuffer[i] = particleSensor.getRed();
     irBuffer[i]  = particleSensor.getIR();
@@ -164,7 +213,6 @@ void computeSpO2AndHR() {
 
 /*********** BLYNK SEND ***********/
 void sendToBlynk() {
-  // Send only “good” data (or send -1 to indicate invalid)
   Blynk.virtualWrite(V0, (validHeartRate && heartRate > 0) ? (int)heartRate : -1);
   Blynk.virtualWrite(V1, (validSPO2 && spo2 > 0) ? (int)spo2 : -1);
 
@@ -210,17 +258,36 @@ void setup() {
   Serial.println("GPS started.");
 
   // Blynk
-  Serial.println("Connecting to Blynk...");
+  Serial.println("Starting Blynk...");
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+  Serial.println("Blynk connected!");
 
   // Send to Blynk every 1 second
   timer.setInterval(1000L, sendToBlynk);
+
+  // Webserver
+  server.on("/", handleRoot);
+  server.on("/sensors", handleSensors);
+  server.onNotFound(handleNotFound);
+  server.begin();
+
+  Serial.println("HTTP server started");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  // Demo startup values for poster
+  if (demoMode) {
+    statusText = "Demo Active";
+    currentStep = 3;
+    currentStepName = "Call Emergency Services";
+  }
 }
 
 /*********** LOOP ***********/
 void loop() {
   Blynk.run();
   timer.run();
+  server.handleClient();
 
   updateGPS();
 
@@ -232,6 +299,8 @@ void loop() {
       computeSpO2AndHR();
       statusText = gpsFix ? "OK" : "No GPS fix";
 
+    
+
       Serial.print("HR: "); Serial.print(validHeartRate ? heartRate : -1);
       Serial.print("  SpO2: "); Serial.print(validSPO2 ? spo2 : -1);
       Serial.print("  | GPS Fix: "); Serial.print(gpsFix ? "YES" : "NO");
@@ -242,6 +311,8 @@ void loop() {
       validHeartRate = 0;
       validSPO2 = 0;
       statusText = "No finger";
+      currentStep = 2;
+      currentStepName = "Check Response";
       Serial.println("No finger detected on MAX30102.");
     }
   }
