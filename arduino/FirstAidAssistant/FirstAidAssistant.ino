@@ -15,15 +15,15 @@
 /*********** BLYNK ***********/
 #define BLYNK_TEMPLATE_ID   "TMPL4R8ux29kx"
 #define BLYNK_TEMPLATE_NAME "Quickstart Template"
-#define BLYNK_AUTH_TOKEN    "YOUR_BLYNK_TOKEN"
+#define BLYNK_AUTH_TOKEN    "rjnqEU1McO9eAcAB1xfur04DDrVEu7nK"
 #define BLYNK_PRINT Serial
 
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <BlynkSimpleEsp32.h>
 
-char ssid[] = "YOUR_WIFI_NAME";
-char pass[] = "YOUR_WIFI_PASSWORD";
+char ssid[] = "OisinrPhone";
+char pass[] = "Password9";
 BlynkTimer timer;
 
 /*********** TFT PINS ***********/
@@ -42,9 +42,11 @@ Adafruit_ST7735 tft(TFT_CS, TFT_DC, TFT_RST);
 /*********** BUTTONS ***********/
 #define BTN1_PIN 14
 #define BTN2_PIN 13
+#define RESET_BTN_PIN 27
 
 bool lastBtn1 = HIGH;
 bool lastBtn2 = HIGH;
+bool lastResetBtn = HIGH;
 
 /*********** SPEAKER ***********/
 #define SPEAKER_PIN 25
@@ -217,6 +219,53 @@ void drawScreen(int i) {
   }
 }
 
+void updateLiveValuesOnScreen() {
+  // Call Help screen: update GPS only
+  if (screenIndex == 3) {
+    tft.fillRect(10, 84, 145, 12, MED_WHITE);
+
+    tft.setTextSize(1);
+    tft.setTextColor(MED_BLACK);
+    tft.setCursor(10, 84);
+
+    if (gpsFix) {
+      tft.print(lat, 4);
+      tft.print(", ");
+      tft.print(lon, 4);
+    } else {
+      tft.print("Searching GPS...");
+    }
+  }
+
+  // Monitor screen: update pulse and SpO2 only
+  if (screenIndex == 9) {
+    tft.setTextSize(1);
+
+    // Clear HR value area
+    tft.fillRect(90, 84, 65, 12, MED_WHITE);
+    tft.setCursor(90, 84);
+    tft.setTextColor(MED_BLACK);
+
+    if (validHeartRate && heartRate > 0) {
+      tft.print(heartRate);
+      tft.print(" bpm");
+    } else {
+      tft.print("-- bpm");
+    }
+
+    
+    tft.fillRect(90, 108, 65, 12, MED_WHITE);
+    tft.setCursor(90, 108);
+
+    if (validSPO2 && spo2 > 0) {
+      tft.print(spo2);
+      tft.print("%");
+    } else {
+      tft.print("--%");
+    }
+  }
+}
+
 /*********** GPS ***********/
 void updateGPS() {
   while (GPSSerial.available() > 0) {
@@ -251,6 +300,7 @@ void computeSpO2AndHR() {
     while (particleSensor.available() == false) {
       particleSensor.check();
       updateGPS();
+      updateDecisionTree();
       Blynk.run();
       timer.run();
       server.handleClient();
@@ -306,9 +356,16 @@ BLYNK_CONNECTED() {
 void updateDecisionTree() {
   bool btn1Now = digitalRead(BTN1_PIN);
   bool btn2Now = digitalRead(BTN2_PIN);
+  bool resetNow = digitalRead(RESET_BTN_PIN);
 
   bool btn1Pressed = (lastBtn1 == HIGH && btn1Now == LOW);
   bool btn2Pressed = (lastBtn2 == HIGH && btn2Now == LOW);
+  bool resetPressed = (lastResetBtn == HIGH && resetNow == LOW);
+
+  if (resetPressed) {
+  screenIndex = 0;
+  lastScreenIndex = -1;
+  }
 
   switch (screenIndex) {
     case 0:
@@ -364,6 +421,7 @@ void updateDecisionTree() {
 
   lastBtn1 = btn1Now;
   lastBtn2 = btn2Now;
+  lastResetBtn = resetNow;
 }
 
 /*********** SETUP ***********/
@@ -378,6 +436,13 @@ void setup() {
 
   pinMode(BTN1_PIN, INPUT_PULLUP);
   pinMode(BTN2_PIN, INPUT_PULLUP);
+  pinMode(RESET_BTN_PIN, INPUT_PULLUP);
+
+  delay(100);
+  lastBtn1 = digitalRead(BTN1_PIN);
+  lastBtn2 = digitalRead(BTN2_PIN);
+  lastResetBtn = digitalRead(RESET_BTN_PIN);
+
 
   ledcAttach(SPEAKER_PIN, 1000, 8);
   ledcWrite(SPEAKER_PIN, 0);
@@ -454,11 +519,15 @@ void loop() {
     lastBeatTime = millis();
   }
 
-  static unsigned long lastScreenRefresh = 0;
+if (screenIndex != lastScreenIndex) {
+  drawScreen(screenIndex);
+  lastScreenIndex = screenIndex;
+}
 
-  if (screenIndex != lastScreenIndex || millis() - lastScreenRefresh > 1000) {
-    drawScreen(screenIndex);
-    lastScreenIndex = screenIndex;
-    lastScreenRefresh = millis();
-  }
+static unsigned long lastLiveUpdate = 0;
+
+if (millis() - lastLiveUpdate > 1000) {
+  lastLiveUpdate = millis();
+  updateLiveValuesOnScreen();
+}
 }
