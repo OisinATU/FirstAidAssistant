@@ -290,6 +290,7 @@ void updateGPS() {
   }
 }
 
+
 /*********** MAX30102 ***********/
 bool fingerPresent() {
   return particleSensor.getIR() > 50000;
